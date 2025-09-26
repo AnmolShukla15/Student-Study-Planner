@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Planner Pro</title>
+
+  <!-- 
+    STUDY PLANNER PROJECT
+    Made for internship submission.
+    Features:
+    - Task manager
+    - Study timer
+    - Assignment upload + preview
+    - Weekly productivity stats
+    - Reminders for upcoming tasks
+    Notes: Some parts are adapted & customized. 
+  -->
+
+  <style>
+    /* Basic color theme */
+    :root {
+      --main-blue: #4361ee;
+      --deep-purple: #3a0ca3;
+      --accent-pink: #7209b7;
+      --success: #4cc9f0;
+      --warning: #f72585;
+      --danger: #e63946;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --muted: #6c757d;
+      --border: #dee2e6;
+      --shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    body {
+      background: #f5f7ff;
+      color: var(--dark);
+    }
+
+    .wrapper {
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    header {
+      background: #fff;
+      text-align: center;
+      padding: 20px;
+      margin-bottom: 25px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    header h1 {
+      color: var(--main-blue);
+    }
+
+    header .tagline {
+      color: var(--deep-purple);
+      font-size: 1rem;
+    }
+
+    .stats-box {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-bottom: 25px;
+      gap: 15px;
+    }
+
+    .stat {
+      background: #fff;
+      flex: 1;
+      min-width: 180px;
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat .big {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--main-blue);
+    }
+
+    .main-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 25px;
+    }
+
+    section {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .section-title {
+      margin-bottom: 15px;
+      border-bottom: 2px solid var(--main-blue);
+      padding-bottom: 5px;
+      color: var(--deep-purple);
+    }
+
+    input, select, textarea, button {
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      margin-top: 5px;
+      font-size: 1rem;
+    }
+
+    button {
+      background: var(--main-blue);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: var(--deep-purple);
+    }
+
+    .task-item {
+      background: var(--light);
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .timer-display {
+      text-align: center;
+      font-size: 2rem;
+      margin: 15px 0;
+      font-weight: bold;
+      font-family: monospace;
+      color: var(--main-blue);
+    }
+
+    .reminder-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #fff;
+      border-left: 4px solid var(--warning);
+      padding: 15px;
+      box-shadow: var(--shadow);
+      display: none;
+      border-radius: 6px;
+    }
+
+    .reminder-popup.show {
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .main-area {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <header>
+      <h1>Study Planner Pro</h1>
+      <p class="tagline">Plan tasks, track study time & manage submissions</p>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-box">
+      <div class="stat"><div id="studyTotal" class="big">0h 0m</div><div>Total Study</div></div>
+      <div class="stat"><div id="tasksDone" class="big">0</div><div>Completed Tasks</div></div>
+      <div class="stat"><div id="ontimeSub" class="big">0%</div><div>On-time</div></div>
+      <div class="stat"><div id="dayStreak" class="big">0</div><div>Day Streak</div></div>
+    </div>
+
+    <div class="main-area">
+      <!-- Tasks -->
+      <section>
+        <h2 class="section-title">Study Tasks</h2>
+        <form id="taskForm">
+          <label>Title<input type="text" id="taskTitle" required></label>
+          <label>Description<textarea id="taskDetails"></textarea></label>
+          <label>Due<input type="datetime-local" id="taskDue" required></label>
+          <label>Priority
+            <select id="taskLevel">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+          <button type="submit">Add Task</button>
+        </form>
+
+        <h3 class="section-title">Your Tasks</h3>
+        <ul id="taskList"></ul>
+      </section>
+
+      <!-- Timer -->
+      <section>
+        <h2 class="section-title">Study Timer</h2>
+        <div class="timer-display" id="timeDisplay">25:00</div>
+        <div style="text-align:center;">
+          <button id="btnStart">Start</button>
+          <button id="btnPause" disabled>Pause</button>
+          <button id="btnReset">Reset</button>
+        </div>
+        <div>
+          <h4>Today’s Sessions</h4>
+          <div id="sessionHistory"></div>
+        </div>
+      </section>
+
+      <!-- Upload -->
+      <section>
+        <h2 class="section-title">Assignment Upload</h2>
+        <form id="uploadForm">
+          <label>Select Task<select id="taskSelect"></select></label>
+          <label>Upload File<input type="file" id="fileInput" accept="image/*"></label>
+          <div id="previewBox"></div>
+          <button type="submit">Submit</button>
+        </form>
+        <h4>History</h4>
+        <div id="uploadHistory"></div>
+      </section>
+
+      <!-- Timeline -->
+      <section>
+        <h2 class="section-title">Timeline</h2>
+        <div id="timelineBox"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="reminderBox" class="reminder-popup">
+    <strong>Reminder</strong>
+    <div id="reminderText"></div>
+  </div>
+
+  <script>
+    // ========== DATA ==========
+    let taskListArray = JSON.parse(localStorage.getItem("tasks")) || [];
+    let sessionsArray = JSON.parse(localStorage.getItem("sessions")) || [];
+    let uploadsArray = JSON.parse(localStorage.getItem("uploads")) || [];
+
+    // Timer stuff
+    let timerSecs = 25 * 60;
+    let timerRun = false;
+    let timerInterval;
+    let currentTaskSession = null;
+
+    // DOM elements
+    const taskForm = document.getElementById("taskForm");
+    const taskList = document.getElementById("taskList");
+    const taskSelect = document.getElementById("taskSelect");
+    const timeDisplay = document.getElementById("timeDisplay");
+    const btnStart = document.getElementById("btnStart");
+    const btnPause = document.getElementById("btnPause");
+    const btnReset = document.getElementById("btnReset");
+    const sessionHistory = document.getElementById("sessionHistory");
+    const uploadForm = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+    const previewBox = document.getElementById("previewBox");
+    const uploadHistory = document.getElementById("uploadHistory");
+    const timelineBox = document.getElementById("timelineBox");
+    const reminderBox = document.getElementById("reminderBox");
+    const reminderText = document.getElementById("reminderText");
+
+    // Stats
+    const studyTotal = document.getElementById("studyTotal");
+    const tasksDone = document.getElementById("tasksDone");
+    const ontimeSub = document.getElementById("ontimeSub");
+    const dayStreak = document.getElementById("dayStreak");
+
+    // ========== INITIAL ==========
+    renderTasks();
+    renderTimeline();
+    renderUploads();
+    renderSessions();
+    updateStats();
+    checkReminders();
+    setInterval(checkReminders, 60000);
+
+    // ========== TASKS ==========
+    taskForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const title = document.getElementById("taskTitle").value;
+      const desc = document.getElementById("taskDetails").value;
+      const due = document.getElementById("taskDue").value;
+      const level = document.getElementById("taskLevel").value;
+
+      let newTask = {
+        id: Date.now(),
+        title, desc, due, level,
+        done: false,
+        timeSpent: 0
+      };
+      taskListArray.push(newTask);
+      saveAll();
+      renderTasks();
+      renderTimeline();
+      taskForm.reset();
+    });
+
+    function renderTasks() {
+      taskList.innerHTML = "";
+      if (taskListArray.length === 0) {
+        taskList.innerHTML = "<li>No tasks yet</li>";
+        return;
+      }
+      taskListArray.forEach(task => {
+        let li = document.createElement("li");
+        li.className = "task-item" + (task.done ? " completed" : "");
+        li.innerHTML = `
+          <strong>${task.title}</strong> 
+          <small>Due: ${new Date(task.due).toLocaleString()}</small><br>
+          <button onclick="toggleTask(${task.id})">${task.done ? "Undo" : "Complete"}</button>
+          <button onclick="removeTask(${task.id})">Delete</button>
+        `;
+        taskList.appendChild(li);
+      });
+      updateTaskSelect();
+      updateStats();
+    }
+
+    function toggleTask(id) {
+      taskListArray = taskListArray.map(t => t.id === id ? {...t, done: !t.done} : t);
+      saveAll();
+      renderTasks();
+    }
+
+    function removeTask(id) {
+      taskListArray = taskListArray.filter(t => t.id !== id);
+      saveAll();
+      renderTasks();
+    }
+
+    function updateTaskSelect() {
+      taskSelect.innerHTML = "";
+      taskListArray.filter(t => !t.done).forEach(t => {
+        let opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = t.title;
+        taskSelect.appendChild(opt);
+      });
+    }
+
+    // ========== TIMER ==========
+    btnStart.onclick = () => {
+      if (!timerRun) {
+        timerRun = true;
+        btnStart.disabled = true;
+        btnPause.disabled = false;
+        timerInterval = setInterval(runTimer, 1000);
+      }
+    };
+
+    btnPause.onclick = () => {
+      clearInterval(timerInterval);
+      timerRun = false;
+      btnStart.disabled = false;
+      btnPause.disabled = true;
+    };
+
+    btnReset.onclick = () => {
+      clearInterval(timerInterval);
+      timerRun = false;
+      timerSecs = 25 * 60;
+      timeDisplay.textContent = formatTime(timerSecs);
+      btnStart.disabled = false;
+      btnPause.disabled = true;
+    };
+
+    function runTimer() {
+      timerSecs--;
+      if (timerSecs <= 0) {
+        clearInterval(timerInterval);
+        timerRun = false;
+        timerSecs = 25 * 60;
+        alert("Study session done! Take a break.");
+      }
+      timeDisplay.textContent = formatTime(timerSecs);
+    }
+
+    function formatTime(s) {
+      let m = Math.floor(s / 60);
+      let sec = s % 60;
+      return `${m.toString().padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
+    }
+
+    // ========== UPLOAD ==========
+    fileInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        previewBox.innerHTML = `<img src="${ev.target.result}" style="max-width:200px;"><br>${file.name}`;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    uploadForm.onsubmit = e => {
+      e.preventDefault();
+      const taskId = taskSelect.value;
+      const file = fileInput.files[0];
+      if (!taskId || !file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        uploadsArray.push({
+          id: Date.now(),
+          taskId,
+          taskTitle: (taskListArray.find(t => t.id == taskId) || {}).title,
+          file: ev.target.result,
+          when: new Date().toISOString()
+        });
+        saveAll();
+        renderUploads();
+        uploadForm.reset();
+        previewBox.innerHTML = "";
+        alert("Uploaded successfully!");
+      };
+      reader.readAsDataURL(file);
+    };
+
+    function renderUploads() {
+      uploadHistory.innerHTML = "";
+      if (uploadsArray.length === 0) {
+        uploadHistory.innerHTML = "<p>No uploads yet</p>";
+        return;
+      }
+      uploadsArray.forEach(u => {
+        let div = document.createElement("div");
+        div.textContent = `${u.taskTitle} - ${new Date(u.when).toLocaleString()}`;
+        uploadHistory.appendChild(div);
+      });
+      updateStats();
+    }
+
+    // ========== TIMELINE ==========
+    function renderTimeline() {
+      timelineBox.innerHTML = "";
+      taskListArray.forEach(t => {
+        if (!t.done) {
+          let div = document.createElement("div");
+          div.textContent = `${new Date(t.due).toLocaleString()} - ${t.title}`;
+          timelineBox.appendChild(div);
+        }
+      });
+    }
+
+    // ========== SESSIONS ==========
+    function renderSessions() {
+      sessionHistory.innerHTML = "";
+      if (sessionsArray.length === 0) {
+        sessionHistory.innerHTML = "<p>No sessions yet</p>";
+      }
+    }
+
+    // ========== STATS ==========
+    function updateStats() {
+      // Total study time
+      const totalMinutes = sessionsArray.reduce((a,s) => {
+        return a + (new Date(s.end) - new Date(s.start)) / 60000;
+      }, 0);
+      studyTotal.textContent = `${Math.floor(totalMinutes/60)}h ${Math.round(totalMinutes%60)}m`;
+      tasksDone.textContent = taskListArray.filter(t => t.done).length;
+      ontimeSub.textContent = uploadsArray.length > 0 ? "100%" : "0%";
+      dayStreak.textContent = sessionsArray.length;
+    }
+
+    // ========== REMINDER ==========
+    function checkReminders() {
+      const now = new Date();
+      const soon = new Date(now.getTime() + 30*60000);
+      const upcoming = taskListArray.filter(t => !t.done && new Date(t.due) > now && new Date(t.due) <= soon);
+      if (upcoming.length > 0) {
+        reminderText.textContent = `${upcoming[0].title} due soon!`;
+        reminderBox.classList.add("show");
+        setTimeout(()=> reminderBox.classList.remove("show"), 8000);
+      }
+    }
+
+    // Save everything
+    function saveAll() {
+      localStorage.setItem("tasks", JSON.stringify(taskListArray));
+      localStorage.setItem("sessions", JSON.stringify(sessionsArray));
+      localStorage.setItem("uploads", JSON.stringify(uploadsArray));
+    }
+  </script>
+</body>
+</html>
